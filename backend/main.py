@@ -23,7 +23,7 @@ def call_groq(prompt: str) -> str:
     for attempt in range(3):
         try:
             data = json.dumps({
-                "model": "google/gemma-3-27b-it:free",
+                "model": "mistralai/mistral-small-3.1-24b-instruct:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 1000
             }).encode("utf-8")
