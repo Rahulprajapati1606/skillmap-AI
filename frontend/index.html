@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SkillMap AI — Skill Assessment Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #080a0f;
+  --bg2: #0f1117;
+  --bg3: #161b24;
+  --bg4: #1c2230;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text: #eef0f4;
+  --text2: #7c8494;
+  --text3: #3d4455;
+  --lime: #c8f06e;
+  --lime2: #e8ff9a;
+  --teal: #52e8c4;
+  --pink: #f06e9a;
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --blue: #60a5fa;
+  --r: 10px;
+  --r2: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14.5px; line-height: 1.6; min-height: 100vh; overflow: hidden; }
+header { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: 56px; background: rgba(8,10,15,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 1.5rem; justify-content: space-between; }
+.logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+.logo-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--lime); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.logo span { color: var(--lime); }
+.header-center { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); animation: pulse 2s infinite; box-shadow: 0 0 6px var(--teal); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; background: rgba(200,240,110,0.1); border: 1px solid rgba(200,240,110,0.2); color: var(--lime); }
+.app { display: grid; grid-template-columns: 360px 1fr; height: 100vh; padding-top: 56px; }
+.left { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; background: var(--bg2); }
+.left-top { padding: 1.25rem 1.25rem 0; border-bottom: 1px solid var(--border); }
+.section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 0.75rem; }
+.tabs { display: flex; gap: 2px; background: var(--bg3); border-radius: var(--r); padding: 3px; margin-bottom: 1rem; }
+.tab { flex: 1; padding: 7px 0; border: none; background: transparent; color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; border-radius: 8px; transition: all 0.2s; font-weight: 500; }
+.tab.active { background: var(--bg4); color: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+.form-scroll { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.1rem; }
+.form-scroll::-webkit-scrollbar { width: 3px; }
+.form-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.field-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text2); margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; }
+.field-label span { color: var(--text3); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--r2); padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 8px; background: rgba(255,255,255,0.015); position: relative; }
+.upload-zone:hover { border-color: var(--lime); background: rgba(200,240,110,0.04); }
+.upload-zone.dragover { border-color: var(--lime); background: rgba(200,240,110,0.07); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 20px; margin-bottom: 4px; }
+.upload-text { font-size: 12px; color: var(--text2); }
+.upload-text strong { color: var(--lime); }
+.upload-hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.upload-success { font-size: 12px; color: var(--teal); display: flex; align-items: center; gap: 6px; justify-content: center; }
+.divider-or { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text3); margin: 4px 0; }
+.divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+textarea { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.55; padding: 10px 12px; resize: vertical; transition: border-color 0.2s; min-height: 100px; }
+textarea:focus { outline: none; border-color: rgba(200,240,110,0.4); }
+textarea::placeholder { color: var(--text3); }
+.char-count { font-size: 11px; color: var(--text3); text-align: right; margin-top: 3px; }
+.btn-start { width: 100%; padding: 13px; background: var(--lime); color: #080a0f; border: none; border-radius: var(--r); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-start:hover { background: var(--lime2); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(200,240,110,0.25); }
+.btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.progress-header { padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid var(--border); }
+.progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+.progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--lime), var(--teal)); border-radius: 2px; transition: width 0.6s ease; width: 0%; }
+.skills-scroll { flex: 1; overflow-y: auto; padding: 1rem; }
+.skills-scroll::-webkit-scrollbar { width: 3px; }
+.skill-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--r); margin-bottom: 6px; border: 1px solid transparent; transition: all 0.25s; }
+.skill-item.active { background: rgba(200,240,110,0.06); border-color: rgba(200,240,110,0.2); }
+.skill-item.done { background: rgba(82,232,196,0.05); border-color: rgba(82,232,196,0.15); }
+.skill-item.locked { opacity: 0.35; }
+.skill-avatar { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px; flex-shrink: 0; background: var(--bg3); color: var(--text2); }
+.skill-item.active .skill-avatar { background: rgba(200,240,110,0.15); color: var(--lime); }
+.skill-item.done .skill-avatar { background: rgba(82,232,196,0.15); color: var(--teal); }
+.skill-info { flex: 1; min-width: 0; }
+.skill-name-text { font-size: 13.5px; font-weight: 500; }
+.skill-status { font-size: 11px; color: var(--text2); }
+.skill-item.active .skill-status { color: var(--lime); }
+.skill-item.done .skill-status { color: var(--teal); }
+.skill-score-badge { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.s1,.s2 { background: rgba(240,110,154,0.15); color: var(--pink); }
+.s3 { background: rgba(251,146,60,0.15); color: var(--orange); }
+.s4 { background: rgba(82,232,196,0.15); color: var(--teal); }
+.s5 { background: rgba(200,240,110,0.15); color: var(--lime); }
+.right { display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+.welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; text-align: center; gap: 1.5rem; }
+.welcome-graphic { position: relative; width: 100px; height: 100px; }
+.welcome-ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(200,240,110,0.2); animation: spin 8s linear infinite; }
+.welcome-ring:nth-child(2) { inset: 8px; border-color: rgba(82,232,196,0.15); animation-direction: reverse; animation-duration: 12s; }
+.welcome-center { position: absolute; inset: 20px; background: radial-gradient(circle, rgba(200,240,110,0.15), transparent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.welcome h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; letter-spacing: -0.03em; line-height: 1.15; }
+.welcome h1 em { color: var(--lime); font-style: normal; }
+.welcome p { color: var(--text2); max-width: 400px; font-size: 15px; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 480px; margin-top: 0.5rem; }
+.feature-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); padding: 14px 12px; text-align: left; }
+.feature-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: var(--lime); margin-bottom: 5px; }
+.feature-title { font-size: 12.5px; font-weight: 500; line-height: 1.3; }
+.chat-msgs { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; }
+.chat-msgs::-webkit-scrollbar { width: 3px; }
+.msg { max-width: 75%; border-radius: var(--r2); padding: 12px 16px; animation: fadeUp 0.25s ease; font-size: 14px; line-height: 1.65; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.msg.agent { background: var(--bg2); border: 1px solid var(--border2); align-self: flex-start; border-bottom-left-radius: 3px; }
+.msg.user { background: rgba(200,240,110,0.08); border: 1px solid rgba(200,240,110,0.18); align-self: flex-end; border-bottom-right-radius: 3px; }
+.msg strong { color: var(--lime); font-weight: 600; }
+.agent-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.agent-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--teal); display: inline-block; }
+.typing-wrap { align-self: flex-start; }
+.typing { display: inline-flex; gap: 5px; align-items: center; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r2); border-bottom-left-radius: 3px; padding: 14px 16px; }
+.typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: bob 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bob { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+.chat-input-row { padding: 1rem 1.5rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; background: var(--bg); }
+.chat-input-row textarea { flex: 1; min-height: 42px; max-height: 120px; border-radius: 12px; resize: none; background: var(--bg2); border-color: var(--border2); padding: 10px 14px; font-size: 14px; }
+.btn-send { width: 42px; height: 42px; border-radius: 11px; background: var(--lime); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; flex-shrink: 0; color: #080a0f; }
+.btn-send:hover { background: var(--lime2); transform: scale(1.05); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.results { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.results::-webkit-scrollbar { width: 3px; }
+.candidate-card { background: linear-gradient(135deg, var(--bg3), var(--bg2)); border: 1px solid var(--border2); border-radius: var(--r2); padding: 1.5rem; display: flex; align-items: center; gap: 1.25rem; position: relative; overflow: hidden; }
+.candidate-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, rgba(200,240,110,0.08), transparent); }
+.candidate-avatar { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, var(--lime), var(--teal)); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: #080a0f; flex-shrink: 0; }
+.candidate-info { flex: 1; }
+.candidate-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 3px; }
+.candidate-meta { font-size: 12.5px; color: var(--text2); }
+.readiness-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; margin-top: 6px; }
+.candidate-score-ring { text-align: right; flex-shrink: 0; }
+.ring-score { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2.5rem; line-height: 1; }
+.ring-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.card { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r2); padding: 1.25rem; }
+.card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.skill-bar-row { margin-bottom: 14px; }
+.skill-bar-row:last-child { margin-bottom: 0; }
+.sbar-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.sbar-name { font-size: 13.5px; font-weight: 500; }
+.sbar-right { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.sbar-level { color: var(--text2); }
+.sbar-num { font-family: 'Syne', sans-serif; font-weight: 700; }
+.sbar-bg { height: 7px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.sbar-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+.sbar-feedback { font-size: 11.5px; color: var(--text2); margin-top: 4px; }
+.strengths-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.strength-tag { display: flex; align-items: center; gap: 6px; background: rgba(82,232,196,0.08); border: 1px solid rgba(82,232,196,0.18); color: var(--teal); padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+.strength-tag::before { content: '✓'; font-weight: 700; }
+.summary-box { background: rgba(200,240,110,0.04); border: 1px solid rgba(200,240,110,0.12); border-radius: var(--r); padding: 1rem; font-size: 14px; line-height: 1.7; color: var(--text); }
+.gap-card { background: var(--bg3); border-radius: var(--r); border: 1px solid var(--border); padding: 1rem; margin-bottom: 10px; transition: border-color 0.2s; }
+.gap-card:hover { border-color: var(--border2); }
+.gap-card:last-child { margin-bottom: 0; }
+.gap-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.gap-skill-name { font-weight: 600; font-size: 14px; }
+.gap-priority { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; }
+.pHigh { background: rgba(240,110,154,0.15); color: var(--pink); }
+.pMedium { background: rgba(251,146,60,0.15); color: var(--orange); }
+.pLow { background: rgba(82,232,196,0.15); color: var(--teal); }
+.gap-levels { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+.level-pill { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: var(--bg4); border: 1px solid var(--border2); }
+.arrow { color: var(--lime); font-size: 14px; }
+.weeks-badge { margin-left: auto; font-size: 11px; color: var(--purple); background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); padding: 2px 8px; border-radius: 20px; }
+.resources-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.resource-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 11px; border-radius: 20px; text-decoration: none; transition: all 0.15s; background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.18); color: var(--blue); }
+.resource-chip:hover { background: rgba(96,165,250,0.15); }
+.free-pill { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; background: rgba(200,240,110,0.15); color: var(--lime); padding: 1px 5px; border-radius: 3px; text-transform: uppercase; }
+.timeline { position: relative; padding-left: 20px; }
+.timeline::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(to bottom, var(--lime), transparent); border-radius: 2px; }
+.timeline-item { position: relative; padding: 0 0 1rem 1rem; }
+.timeline-item::before { content: ''; position: absolute; left: -14px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 3px rgba(200,240,110,0.15); }
+.timeline-item:last-child { padding-bottom: 0; }
+.tl-week { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px; color: var(--lime); margin-bottom: 3px; letter-spacing: 0.04em; }
+.tl-focus { font-size: 13.5px; font-weight: 500; }
+.tl-goal { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.estimate-banner { background: linear-gradient(135deg, rgba(167,139,250,0.1), rgba(82,232,196,0.08)); border: 1px solid rgba(167,139,250,0.2); border-radius: var(--r); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.estimate-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; color: var(--purple); }
+.btn-reset { align-self: center; padding: 10px 24px; background: transparent; border: 1px solid var(--border2); border-radius: var(--r); color: var(--text2); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.18s; }
+.btn-reset:hover { border-color: var(--lime); color: var(--lime); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon">🎯</div>Skill<span>Map</span> <span style="color:var(--text3);font-weight:400;font-size:0.85rem">AI</span></div>
+  <div class="header-center"><div class="pulse"></div><span id="hstatus">Agent Ready</span></div>
+  <div style="display:flex;gap:8px">
+    <div class="badge">FREE TIER</div>
+    <div class="badge" style="background:rgba(82,232,196,0.1);border-color:rgba(82,232,196,0.2);color:var(--teal)">LLaMA 3 Powered</div>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="left">
+    <div class="left-top">
+      <div class="section-label">Assessment Setup</div>
+      <div class="tabs">
+        <button class="tab active" id="tab-input" onclick="showTab('input')">📋 Input</button>
+        <button class="tab" id="tab-skills" onclick="showTab('skills')">📊 Skills</button>
+      </div>
+    </div>
+
+    <div class="form-scroll" id="view-input">
+      <div>
+        <div class="field-label">Job Description <span>PDF or paste text</span></div>
+        <div class="upload-zone" id="jd-drop" ondragover="dragOver(event,'jd-drop')" ondragleave="dragLeave('jd-drop')" ondrop="dropFile(event,'jd')">
+          <input type="file" accept=".pdf,.txt,.doc,.docx" onchange="handleFile(event,'jd')" />
+          <div id="jd-uc"><div class="upload-icon">📄</div><div class="upload-text"><strong>Click to upload</strong> or drag & drop</div><div class="upload-hint">PDF, TXT, DOC supported</div></div>
+        </div>
+        <div class="divider-or">or paste text below</div>
+        <textarea id="jd-text" rows="5" placeholder="Paste job description here..." oninput="updateCount('jd-text','jd-cnt')"></textarea>
+        <div class="char-count"><span id="jd-cnt">0</span> characters</div>
+      </div>
+      <div>
+        <div class="field-label">Candidate Resume <span>PDF or paste text</span></div>
+        <div class="upload-zone" id="res-drop" ondragover="dragOver(event,'res-drop')" ondragleave="dragLeave('res-drop')" ondrop="dropFile(event,'resume')">
+          <input type="file" accept=".pdf,.txt,.doc,.docx" onchange="handleFile(event,'resume')" />
+          <div id="res-uc"><div class="upload-icon">📝</div><div class="upload-text"><strong>Click to upload</strong> or drag & drop</div><div class="upload-hint">PDF, TXT, DOC supported</div></div>
+        </div>
+        <div class="divider-or">or paste text below</div>
+        <textarea id="resume-text" rows="5" placeholder="Paste resume here..." oninput="updateCount('resume-text','res-cnt')"></textarea>
+        <div class="char-count"><span id="res-cnt">0</span> characters</div>
+      </div>
+      <button class="btn-start" id="btn-start" onclick="startAssessment()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Assessment
+      </button>
+    </div>
+
+    <div class="hidden" id="view-skills" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="progress-header">
+        <div class="progress-info"><span id="prog-label">Assessing skills...</span><span id="prog-pct">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      </div>
+      <div class="skills-scroll" id="skills-list"></div>
+    </div>
+  </aside>
+
+  <main class="right">
+    <div class="welcome" id="welcome">
+      <div class="welcome-graphic">
+        <div class="welcome-ring"></div><div class="welcome-ring"></div>
+        <div class="welcome-center">🎯</div>
+      </div>
+      <h1>Real skill.<br><em>Not resume claims.</em></h1>
+      <p>Upload a Job Description and Resume. Our AI agent conversationally assesses each skill and generates a personalised learning roadmap.</p>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="feature-num">01 — PARSE</div><div class="feature-title">Extracts required skills from JD automatically</div></div>
+        <div class="feature-card"><div class="feature-num">02 — ASSESS</div><div class="feature-title">2 adaptive questions per skill, like a real interview</div></div>
+        <div class="feature-card"><div class="feature-num">03 — PLAN</div><div class="feature-title">Personalised learning roadmap with free resources</div></div>
+      </div>
+    </div>
+    <div class="chat-msgs hidden" id="chat-msgs"></div>
+    <div class="results hidden" id="results-panel"></div>
+    <div class="chat-input-row hidden" id="input-bar">
+      <textarea id="chat-in" rows="1" placeholder="Type your answer..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="btn-send" id="btn-send" onclick="sendMsg()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let sessionId=null,skills=[],totalSkills=0,curIdx=0,loading=false;
+
+function dragOver(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover');}
+function dragLeave(id){document.getElementById(id).classList.remove('dragover');}
+function dropFile(e,type){e.preventDefault();const id=type==='jd'?'jd-drop':'res-drop';document.getElementById(id).classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)processFile(f,type);}
+function handleFile(e,type){const f=e.target.files[0];if(f)processFile(f,type);}
+function processFile(file,type){
+  const uc=type==='jd'?'jd-uc':'res-uc';
+  const ti=type==='jd'?'jd-text':'resume-text';
+  const ci=type==='jd'?'jd-cnt':'res-cnt';
+  if(file.type==='application/pdf'){document.getElementById(uc).innerHTML=`<div class="upload-success">✅ ${file.name} uploaded</div><div class="upload-hint" style="margin-top:4px">Please also paste the text below for best results</div>`;return;}
+  const r=new FileReader();
+  r.onload=e=>{const t=e.target.result;document.getElementById(ti).value=t;document.getElementById(ci).textContent=t.length;document.getElementById(uc).innerHTML=`<div class="upload-success">✅ ${file.name} loaded</div>`;};
+  r.readAsText(file);
+}
+function updateCount(ti,ci){document.getElementById(ci).textContent=document.getElementById(ti).value.length;}
+function showTab(tab){
+  document.getElementById('tab-input').classList.toggle('active',tab==='input');
+  document.getElementById('tab-skills').classList.toggle('active',tab!=='input');
+  document.getElementById('view-input').classList.toggle('hidden',tab!=='input');
+  const vs=document.getElementById('view-skills');
+  if(tab==='skills'){vs.classList.remove('hidden');vs.style.display='flex';}else{vs.classList.add('hidden');}
+}
+async function startAssessment(){
+  const jd=document.getElementById('jd-text').value.trim();
+  const resume=document.getElementById('resume-text').value.trim();
+  if(!jd||!resume){alert('Please fill in both the Job Description and Resume.');return;}
+  const btn=document.getElementById('btn-start');
+  btn.disabled=true;btn.innerHTML='<span>Analysing with AI...</span>';
+  document.getElementById('hstatus').textContent='Extracting skills...';
+  try{
+    const res=await fetch(`${API}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_description:jd,resume})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.detail||'Server error');
+    sessionId=data.session_id;skills=data.skills;totalSkills=skills.length;
+    buildSkillsPanel(skills);
+    document.getElementById('welcome').classList.add('hidden');
+    document.getElementById('chat-msgs').classList.remove('hidden');
+    document.getElementById('input-bar').classList.remove('hidden');
+    showTab('skills');
+    appendMsg('agent',data.message);
+    updateProgress(data.progress);
+  }catch(e){
+    alert('Error: '+e.message+'\n\nMake sure backend is running on port 8000.');
+    btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Assessment';
+  }
+}
+function buildSkillsPanel(sl){
+  const el=document.getElementById('skills-list');el.innerHTML='';
+  sl.forEach((s,i)=>{el.innerHTML+=`<div class="skill-item ${i===0?'active':'locked'}" id="si-${i}"><div class="skill-avatar">${s[0].toUpperCase()}</div><div class="skill-info"><div class="skill-name-text">${s}</div><div class="skill-status" id="ss-${i}">${i===0?'Assessing now...':'Waiting'}</div></div><span id="sb-${i}"></span></div>`;});
+}
+function updateProgress(p){
+  curIdx=p.current-1;
+  const pct=Math.round(((p.current-1)/p.total)*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-label').textContent=`Assessing: ${p.skill}`;
+  document.getElementById('hstatus').textContent=`Assessing ${p.skill} (${p.current}/${p.total})`;
+  skills.forEach((_,i)=>{
+    const el=document.getElementById(`si-${i}`);const ss=document.getElementById(`ss-${i}`);
+    el.className='skill-item '+(i<curIdx?'done':i===curIdx?'active':'locked');
+    if(i===curIdx)ss.textContent='Assessing now...';else if(i<curIdx)ss.textContent='Complete';else ss.textContent='Waiting';
+  });
+}
+function markAllDone(sm){
+  document.getElementById('prog-fill').style.width='100%';
+  document.getElementById('prog-pct').textContent='100%';
+  document.getElementById('prog-label').textContent='Assessment complete!';
+  document.getElementById('hstatus').textContent='Generating learning plan...';
+  Object.entries(sm).forEach(([skill,data])=>{
+    const i=skills.indexOf(skill);if(i<0)return;
+    document.getElementById(`si-${i}`).className='skill-item done';
+    document.getElementById(`ss-${i}`).textContent=data.level||'Complete';
+    if(data.score)document.getElementById(`sb-${i}`).innerHTML=`<span class="skill-score-badge s${data.score}">${data.score}/5</span>`;
+  });
+}
+function appendMsg(role,text){
+  const c=document.getElementById('chat-msgs');const d=document.createElement('div');
+  if(role==='agent'){d.innerHTML=`<div class="agent-label">SkillMap AI</div><div class="msg agent">${fmt(text)}</div>`;}
+  else{d.innerHTML=`<div class="msg user">${fmt(text)}</div>`;d.style.display='flex';d.style.justifyContent='flex-end';}
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function fmt(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
+function showTyping(){const c=document.getElementById('chat-msgs');const d=document.createElement('div');d.id='typing';d.className='typing-wrap';d.innerHTML='<div class="agent-label">SkillMap AI</div><div class="typing"><span></span><span></span><span></span></div>';c.appendChild(d);c.scrollTop=c.scrollHeight;}
+function hideTyping(){const el=document.getElementById('typing');if(el)el.remove();}
+async function sendMsg(){
+  if(loading||!sessionId)return;
+  const inp=document.getElementById('chat-in');const text=inp.value.trim();if(!text)return;
+  appendMsg('user',text);inp.value='';autoResize(inp);
+  loading=true;document.getElementById('btn-send').disabled=true;showTyping();
+  try{
+    const res=await fetch(`${API}/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId,message:text})});
+    const data=await res.json();hideTyping();
+    if(data.phase==='assessment'){appendMsg('agent',data.message);updateProgress(data.progress);}
+    else if(data.phase==='complete'){appendMsg('agent',data.message);markAllDone(data.skill_scores);setTimeout(()=>renderResults(data),1500);}
+  }catch(e){hideTyping();appendMsg('agent','⚠️ Connection error. Is the backend running on localhost:8000?');}
+  loading=false;document.getElementById('btn-send').disabled=false;
+}
+function renderResults(data){
+  const plan=data.learning_plan||{};const scores=data.skill_scores||{};
+  document.getElementById('chat-msgs').classList.add('hidden');
+  document.getElementById('input-bar').classList.add('hidden');
+  const panel=document.getElementById('results-panel');panel.classList.remove('hidden');
+  document.getElementById('hstatus').textContent='Assessment Complete ✓';
+  const overall=plan.overall_score||(Object.values(scores).reduce((s,v)=>s+(v.score||0),0)/Object.keys(scores).length);
+  const sc=overall>=4?'var(--teal)':overall>=3?'var(--orange)':'var(--pink)';
+  const ready=overall>=4?{l:'Job Ready',bg:'rgba(82,232,196,0.12)',c:'var(--teal)'}:overall>=3?{l:'Nearly Ready',bg:'rgba(251,146,60,0.12)',c:'var(--orange)'}:{l:'Needs Development',bg:'rgba(240,110,154,0.12)',c:'var(--pink)'};
+  const rt=document.getElementById('resume-text').value;
+  const nm=rt.match(/^([A-Z][a-z]+(?: [A-Z][a-z]+)+)/m);
+  const name=nm?nm[1]:'Candidate';
+  const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  let html=`
+    <div class="candidate-card">
+      <div class="candidate-avatar">${ini}</div>
+      <div class="candidate-info">
+        <div class="candidate-name">${name}</div>
+        <div class="candidate-meta">Assessed ${Object.keys(scores).length} skills · ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
+        <div class="readiness-tag" style="background:${ready.bg};color:${ready.c}">${ready.l}</div>
+      </div>
+      <div class="candidate-score-ring">
+        <div class="ring-score" style="color:${sc}">${overall.toFixed(1)}</div>
+        <div class="ring-label">Overall / 5.0</div>
+      </div>
+    </div>
+    ${plan.summary?`<div class="card"><div class="card-title"><span>Assessment Summary</span><span>💬</span></div><div class="summary-box">${plan.summary}</div></div>`:''}
+    <div class="card">
+      <div class="card-title"><span>Skill Proficiency Breakdown</span><span>📊</span></div>
+      ${Object.entries(scores).map(([skill,d])=>{const s=d.score||0;const pct=(s/5)*100;const col=s>=4?'var(--teal)':s>=3?'var(--orange)':'var(--pink)';return`<div class="skill-bar-row"><div class="sbar-top"><span class="sbar-name">${skill}</span><span class="sbar-right"><span class="sbar-level">${d.level||''}</span><span class="sbar-num" style="color:${col}">${s}/5</span></span></div><div class="sbar-bg"><div class="sbar-fill" style="width:0%;background:linear-gradient(90deg,${col},${col}88)" data-w="${pct}"></div></div><div class="sbar-feedback">${d.feedback||''}</div></div>`;}).join('')}
+    </div>
+    ${plan.strengths&&plan.strengths.length?`<div class="card"><div class="card-title"><span>Strengths</span><span>⚡</span></div><div class="strengths-wrap">${plan.strengths.map(s=>`<div class="strength-tag">${s}</div>`).join('')}</div></div>`:''}
+    ${plan.gaps&&plan.gaps.length?`<div class="card"><div class="card-title"><span>Skill Gaps & Learning Resources</span><span>🎯</span></div>${plan.gaps.map(g=>`<div class="gap-card"><div class="gap-top"><div class="gap-skill-name">${g.skill}</div><span class="gap-priority p${g.priority||'High'}">${g.priority||'High'} Priority</span></div><div class="gap-levels"><span class="level-pill">${g.current_level||'Beginner'}</span><span class="arrow">→</span><span class="level-pill" style="border-color:rgba(200,240,110,0.2);color:var(--lime)">${g.target_level||'Intermediate'}</span><span class="weeks-badge">~${g.weeks_to_close||'?'} weeks</span></div><div class="resources-grid">${(g.resources||[]).map(r=>`<a href="${r.url}" target="_blank" class="resource-chip">${r.title}${r.free?'<span class="free-pill">FREE</span>':''}</a>`).join('')}</div></div>`).join('')}</div>`:''}
+    ${plan.learning_roadmap&&plan.learning_roadmap.length?`<div class="card"><div class="card-title"><span>Learning Roadmap</span><span>🗺️</span></div><div class="estimate-banner"><div><div style="font-size:12px;color:var(--text2);margin-bottom:2px">Total Estimated Duration</div><div style="font-size:13px;color:var(--text2)">To reach job-ready proficiency</div></div><div style="text-align:right"><div class="estimate-num">${plan.total_weeks_estimate||'?'}</div><div style="font-size:11px;color:var(--text2)">weeks</div></div></div><div class="timeline">${plan.learning_roadmap.map(r=>`<div class="timeline-item"><div class="tl-week">${r.week}</div><div class="tl-focus">${r.focus}</div><div class="tl-goal">${r.goal}</div></div>`).join('')}</div></div>`:''}
+    <button class="btn-reset" onclick="resetApp()">← Start New Assessment</button>`;
+  panel.innerHTML=html;panel.scrollTop=0;
+  setTimeout(()=>{document.querySelectorAll('.sbar-fill').forEach(el=>{el.style.width=el.dataset.w+'%';});},100);
+}
+function resetApp(){
+  sessionId=null;skills=[];totalSkills=0;curIdx=0;
+  document.getElementById('chat-msgs').innerHTML='';
+  document.getElementById('results-panel').innerHTML='';
+  ['chat-msgs','input-bar','results-panel'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('welcome').classList.remove('hidden');
+  const btn=document.getElementById('btn-start');btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Assessment';
+  document.getElementById('hstatus').textContent='Agent Ready';
+  showTab('input');
+  ['jd-text','resume-text'].forEach(id=>document.getElementById(id).value='');
+  ['jd-cnt','res-cnt'].forEach(id=>document.getElementById(id).textContent='0');
+  document.getElementById('jd-uc').innerHTML='<div class="upload-icon">📄</div><div class="upload-text"><strong>Click to upload</strong> or drag & drop</div><div class="upload-hint">PDF, TXT, DOC supported</div>';
+  document.getElementById('res-uc').innerHTML='<div class="upload-icon">📝</div><div class="upload-text"><strong>Click to upload</strong> or drag & drop</div><div class="upload-hint">PDF, TXT, DOC supported</div>';
+}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+</script>
+</body>
+</html>
