@@ -23,7 +23,7 @@ def call_groq(prompt: str) -> str:
     for attempt in range(3):
         try:
             data = json.dumps({
-                "model": "mistralai/mistral-small-3.1-24b-instruct:free",
+                "model": "google/gemma-3-27b-it:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 1000
             }).encode("utf-8")
@@ -31,10 +31,12 @@ def call_groq(prompt: str) -> str:
                 OPENROUTER_URL,
                 data=data,
                 headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                method="POST"
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://skillmap-ai-1vmm.onrender.com",
+    "X-Title": "SkillMap AI"
+},
+method="POST"
             )
             with urllib.request.urlopen(req) as response:
                 result = json.loads(response.read().decode("utf-8"))
