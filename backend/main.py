@@ -17,51 +17,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OPENROUTER_API_KEY = "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"
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+HF_API_KEY = "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"
+HF_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
 
 def call_ai(prompt: str) -> str:
     import time
-    models = [
-        "google/gemma-3-27b-it:free",
-        "mistralai/mistral-7b-instruct:free",
-        "meta-llama/llama-3.2-3b-instruct:free"
-    ]
-    last_error = None
-    for model in models:
-        for attempt in range(2):
-            try:
-                data = json.dumps({
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 1000
-                }).encode("utf-8")
-                req = urllib.request.Request(
-                    OPENROUTER_URL,
-                    data=data,
-                    headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://skillmap-ai-1vmm.onrender.com",
-                        "X-Title": "SkillMap AI"
-                    },
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=30) as response:
-                    result = json.loads(response.read().decode("utf-8"))
-                    return result["choices"][0]["message"]["content"]
-            except urllib.error.HTTPError as e:
-                last_error = f"HTTP {e.code} for model {model}"
-                print(f"Error with model {model}, attempt {attempt+1}: {e.code}")
-                if e.code == 429:
-                    time.sleep(15)
-                else:
-                    break
-            except Exception as e:
-                last_error = str(e)
-                print(f"Error with model {model}: {e}")
-                break
-    raise Exception(f"All models failed. Last error: {last_error}")
+    for attempt in range(3):
+        try:
+            data = json.dumps({
+                "inputs": prompt,
+                "parameters": {"max_new_tokens": 500, "return_full_text": False}
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                HF_URL,
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {HF_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=60) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                if isinstance(result, list):
+                    return result[0]["generated_text"]
+                elif isinstance(result, dict) and "error" in result:
+                    if "loading" in result["error"].lower():
+                        print("Model loading, waiting 20s...")
+                        time.sleep(20)
+                        continue
+                    raise Exception(result["error"])
+                return str(result)
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+            if attempt < 2:
+                time.sleep(10)
+            else:
+                raise Exception(f"AI call failed: {str(e)}")
 
 sessions = {}
 
@@ -99,12 +91,14 @@ class Session:
         self.history.append({"role": role, "content": content})
 
 def extract_skills(jd, resume):
-    prompt = f"""You are an expert recruiter. Extract the top 5 specific technical and professional skills required from this Job Description.
-Return ONLY a JSON array of skill strings, nothing else. No markdown, no explanation.
-Example: ["Python", "SQL", "Machine Learning", "Data Visualization", "Communication"]
+    prompt = f"""Extract the top 5 technical skills required from this Job Description.
+Return ONLY a JSON array like this: ["Python", "SQL", "Data Visualization", "Statistics", "Communication"]
+No explanation, no markdown, just the JSON array.
 
 Job Description:
-{jd}"""
+{jd[:1000]}
+
+JSON array:"""
     text = call_ai(prompt).strip()
     text = re.sub(r"```json|```", "", text).strip()
     start = text.find("[")
@@ -116,32 +110,36 @@ Job Description:
 def generate_question(skill, resume, question_num, previous_answers):
     prev_context = f"\nTheir previous answer: {previous_answers[-1]}" if previous_answers else ""
     depth = "basic conceptual" if question_num == 1 else "practical application"
-    prompt = f"""You are a friendly technical interviewer assessing proficiency in: {skill}
+    prompt = f"""You are a technical interviewer. Ask ONE {depth} question about {skill}.
 {prev_context}
-Ask ONE {depth} question about {skill}. Keep it to 2 sentences max.
-Return ONLY the question, nothing else."""
+Keep the question to 2 sentences max. Return ONLY the question.
+
+Question:"""
     return call_ai(prompt).strip()
 
 def score_answer(skill, answers):
     answers_text = "\n".join([f"Q{i+1}: {a}" for i, a in enumerate(answers)])
-    prompt = f"""Score this candidate's proficiency in "{skill}" based on their answers.
-Answers:
-{answers_text}
-Return ONLY this JSON (no markdown, no extra text):
+    prompt = f"""Score this candidate's proficiency in "{skill}".
+Answers: {answers_text}
+
+Return ONLY this JSON (no markdown):
 {{"score": 3, "feedback": "one sentence", "level": "Intermediate"}}
-Score 1-5: 1=No knowledge, 2=Basic, 3=Working, 4=Proficient, 5=Expert"""
+
+JSON:"""
     text = call_ai(prompt).strip()
     text = re.sub(r"```json|```", "", text).strip()
     start = text.find("{")
     end = text.rfind("}") + 1
     if start >= 0 and end > start:
         text = text[start:end]
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except:
+        return {"score": 3, "feedback": "Assessment recorded.", "level": "Intermediate"}
 
 def generate_learning_plan(jd, resume, skill_scores):
     scores_summary = json.dumps(skill_scores, indent=2)
-    prompt = f"""You are a career coach. Generate a learning plan based on this assessment.
-Job Description: {jd[:400]}
+    prompt = f"""You are a career coach. Generate a learning plan.
 Skill Scores (1-5): {scores_summary}
 
 Return ONLY this JSON (no markdown):
@@ -166,14 +164,18 @@ Return ONLY this JSON (no markdown):
   ],
   "total_weeks_estimate": 8
 }}
-Only include skills with score <= 3 in gaps. Use real URLs."""
+
+JSON:"""
     text = call_ai(prompt).strip()
     text = re.sub(r"```json|```", "", text).strip()
     start = text.find("{")
     end = text.rfind("}") + 1
     if start >= 0 and end > start:
         text = text[start:end]
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except:
+        return {"overall_score": 3.0, "summary": "Assessment complete.", "strengths": [], "gaps": [], "learning_roadmap": [], "total_weeks_estimate": 0}
 
 @app.post("/start")
 async def start_session(req: StartRequest):
@@ -221,7 +223,7 @@ async def chat(req: ChatRequest):
     else:
         try:
             result = score_answer(skill, session.skill_scores[skill]["answers"])
-        except Exception as e:
+        except:
             result = {"score": 3, "feedback": "Assessment recorded.", "level": "Intermediate"}
         session.skill_scores[skill].update(result)
         session.advance_skill()
